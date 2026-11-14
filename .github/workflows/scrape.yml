@@ -1,0 +1,65 @@
+name: Check quotes
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'      # every 10 min (GitHub drops many of these on small repos; the chain below covers daytime)
+    - cron: '5 23 * * *'        # 7:05 AM MYT: start the daytime chain
+    - cron: '20,50 0 * * *'     # backup chain starters (8:20 / 8:50 AM MYT)
+    - cron: '30 4 * * *'        # 12:30 PM MYT backup
+    - cron: '0 3 1 * *'         # monthly keep-alive
+  workflow_dispatch:
+    inputs:
+      loop_minutes:
+        description: 'Minutes to keep checking in this run'
+        default: '50'
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install --quiet requests
+      - name: Load previous data (data branch)
+        run: |
+          mkdir -p prev
+          if git ls-remote --exit-code origin refs/heads/data >/dev/null 2>&1; then
+            git fetch --quiet --depth=1 origin data
+            for f in latest.json history.json alert-state.json; do git show FETCH_HEAD:data/$f > prev/$f || true; done
+          fi
+      - name: Check every 10 min for ~50 min, publish, push alerts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          LOOP_MINUTES: ${{ inputs.loop_minutes || '50' }}
+          INTERVAL_SEC: '600'
+        run: bash scraper/loop.sh
+      # GitHub silently drops most "*/10" cron runs, so from 7:00 AM to midnight MYT each run queues the next.
+      # The concurrency group keeps at most one running + one queued, so chains never multiply.
+      - name: Queue the next run (7am-midnight MYT)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          hm=$(TZ=Asia/Kuala_Lumpur date +%H%M)
+          if [ $((10#$hm)) -ge 700 ] && [ $((10#$hm)) -le 2340 ]; then
+            gh workflow run scrape.yml --repo "$GITHUB_REPOSITORY" --ref main && echo "queued next run"
+          else
+            echo "outside 7:00-23:40 MYT ($hm): cron only"
+          fi
+      - name: Keep schedule alive
+        if: github.event.schedule == '0 3 1 * *'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/scrape.yml/enable" || true

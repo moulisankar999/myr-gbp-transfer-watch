@@ -1,0 +1,13 @@
+{
+  "_help": "Alert settings used by the 10-minute scraper (push alerts through ntfy). Edit on GitHub and commit; the next run picks it up.",
+  "amount_myr": 30000,
+  "target_gbp": 5559.74,
+  "target_note": "Western Union in-app transfer on 14 Nov 2026: RM30,000 at 0.1853, fee RM0, received GBP 5,559.74",
+  "alert_metric": "all_in_gbp",
+  "assume_wu_app_fee_waived": true,
+  "instant_only": false,
+  "min_improvement_gbp": 5,
+  "repeat_after_hours": 3,
+  "quiet_hours_myt": [0, 7],
+  "dashboard_url": "https://moulisankar999.github.io/myr-gbp-transfer-watch/"
+}
