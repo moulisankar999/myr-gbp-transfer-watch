@@ -177,7 +177,7 @@ function render() {
       ${best ? `<div class="best-line"><div class="big num">${gbp(best.all_in_gbp)}</div><div class="best-name">${esc(bestM.name)}</div></div>
       <div class="mid-alt">Rate ${num(best.rate, 4)} · fee ${myr(best.fee_myr)}${best.fee_mode === 'added' && best.fee_myr ? ' on top' : ''} · ${esc(bestM.speed)} · ${srcBadge(best)}</div>
       <div class="delta">
-        <span class="tag ${vT.gbp > 0 ? 'good' : 'bad'}">vs target ${sgn(vT.gbp, (x) => gbp(x))}</span>
+        <span class="tag ${vT.gbp > 0 ? 'good' : vT.gbp < 0 ? 'bad' : ''}">vs target ${sgn(vT.gbp, (x) => gbp(x))}</span>
         <span class="tag ${vB.gbp >= 0 ? 'good' : 'bad'}">vs your WU 14 Nov ${sgn(vB.gbp, (x) => gbp(x))} (${sgn(vB.pct, (x) => x.toFixed(2))}%)</span>
         ${midVal != null ? `<span class="tag">${midVal >= 0 ? 'above' : 'below'} mid-market by ${Math.abs(midVal).toFixed(2)}%</span>` : ''}
       </div>
@@ -224,7 +224,7 @@ function row(q, pos, best, baseGbp, dim = false) {
   const speedB = m.instant ? `<span class="b fast">${esc(m.speed)}</span>` : m.instant === false ? `<span class="b slow">${esc(m.speed)}</span>` : `<span class="b unv">${esc(m.speed)}</span>`;
   const notes = [];
   if (q.over_cap) notes.push(`Max ${myr(q.cap_myr, 0)} per transfer — needs ${Math.ceil(S.amount / q.cap_myr)} transfers.`);
-  if (q.id === 'westernunion' && q.fee_waived_assumed) notes.push(`Fee shown as RM0 like your WU app on 14 Nov; the WU website charges ${myr(q.web_fee_myr, 0)} for FPX (then all-in ${gbp((q.receive_gbp * S.amount) / (S.amount + (q.web_fee_myr || 0)))}).`);
+  if (q.id === 'westernunion' && q.fee_waived_assumed) notes.push(`Fee shown as RM0 like your WU app on 14 Nov; the WU website charges ${myr(q.web_fee_myr, 0)} for FPX (then all-in ${gbp((q.rate * S.amount * S.amount) / (S.amount + (q.web_fee_myr || 0)))}).`);
   if (q.id === 'eremit') notes.push('Rate is live; RM5 fee is from moneytransfers.com (11 Nov 2026) — confirm in the eRemit app.');
   if (q.id === 'instarem' && q.src !== 'live') notes.push('Instarem blocks browser requests, so this comes from the 10-minute checker (fee 0.5%).');
   return `<div class="prow ${pos === 1 ? 'top' : ''} ${dim ? 'dim' : ''}">
